@@ -64,13 +64,86 @@ int	expect(char **s, char c)
 	return (0);
 }
 
-//...
+node			*parse_add(char **s);
+
+node	*parse_factor(char **s)
+{
+	node	*ret;
+
+	if (isdigit(**s))
+	{
+		ret = new_node((node){.type = VAL, .val = **s - '0'});
+		(*s)++;
+		return (ret);
+	}
+	if (accept(s, '('))
+	{
+		ret = parse_add(s);
+		if (!ret)
+			return (NULL);
+		if (!expect(s, ')'))
+		{
+			destroy_tree(ret);
+			return (NULL);
+		}
+		return (ret);
+	}
+	unexpected(**s);
+	return (NULL);
+}
+
+node	*parse_mul(char **s)
+{
+	node	*left;
+	node	*right;
+
+	left = parse_factor(s);
+	if (!left)
+		return (NULL);
+	while (accept(s, '*'))
+	{
+		right = parse_factor(s);
+		if (!right)
+		{
+			destroy_tree(left);
+			return (NULL);
+		}
+		left = new_node((node){.type = MULTI, .l = left, .r = right});
+	}
+	return (left);
+}
+
+node	*parse_add(char **s)
+{
+	node	*left;
+	node	*right;
+
+	left = parse_mul(s);
+	if (!left)
+		return (NULL);
+	while (accept(s, '+'))
+	{
+		right = parse_mul(s);
+		if (!right)
+		{
+			destroy_tree(left);
+			return (NULL);
+		}
+		left = new_node((node){.type = ADD, .l = left, .r = right});
+	}
+	return (left);
+}
 
 node	*parse_expr(char *s)
 {
-	//...
+	node	*ret;
+
+	ret = parse_add(&s);
+	if (!ret)
+		return (NULL);
 	if (*s)
 	{
+		unexpected(*s);
 		destroy_tree(ret);
 		return (NULL);
 	}
@@ -92,9 +165,11 @@ int	eval_tree(node *tree)
 
 int	main(int argc, char **argv)
 {
+	node	*tree;
+
 	if (argc != 2)
 		return (1);
-	node *tree = parse_expr(argv[1]);
+	tree = parse_expr(argv[1]);
 	if (!tree)
 		return (1);
 	printf("%d\n", eval_tree(tree));
